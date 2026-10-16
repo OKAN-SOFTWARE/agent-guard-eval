@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test & Evaluate (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+
+      - name: Run Test Suite
+        run: |
+          pytest -v
+
+      - name: Evaluate Golden Trace (Deterministic Dogfooding)
+        run: |
+          agentguard evaluate examples/trace_valid.json -s examples/tool_schemas.json
+          agentguard evaluate examples/trace_vulnerable.json --format sarif -o findings.sarif || true
+
+      - name: Upload SARIF Security Report
+        if: matrix.python-version == '3.12' && always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: findings.sarif
+        continue-on-error: true

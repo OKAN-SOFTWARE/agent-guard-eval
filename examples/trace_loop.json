@@ -1,0 +1,33 @@
+{
+  "session_id": "sess-loop-003",
+  "agent_name": "crawler-agent",
+  "user_prompt": "Find all related articles",
+  "tool_calls": [
+    {
+      "step_id": 1,
+      "tool_name": "fetch_url",
+      "arguments": { "url": "https://example.com/item/1" },
+      "output": "retry needed"
+    },
+    {
+      "step_id": 2,
+      "tool_name": "fetch_url",
+      "arguments": { "url": "https://example.com/item/1" },
+      "output": "retry needed"
+    },
+    {
+      "step_id": 3,
+      "tool_name": "fetch_url",
+      "arguments": { "url": "https://example.com/item/1" },
+      "output": "retry needed"
+    },
+    {
+      "step_id": 4,
+      "tool_name": "fetch_url",
+      "arguments": { "url": "https://example.com/item/1" },
+      "output": "retry needed"
+    }
+  ],
+  "final_response": null,
+  "metadata": {}
+}
