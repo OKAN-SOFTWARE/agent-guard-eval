@@ -1,7 +1,7 @@
 """JUnit XML reporter for CI test runner integration."""
 
 import html
-from typing import List
+
 from agentguard.models import EvaluationResult, Finding
 
 
@@ -12,7 +12,7 @@ def render_junit_report(result: EvaluationResult) -> str:
     failures_count = result.failed_checks
     time_sec = result.duration_ms / 1000.0
 
-    lines: List[str] = [
+    lines: list[str] = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         f'<testsuite name="{html.escape(testsuite_name)}" tests="{tests_count}" failures="{failures_count}" errors="0" time="{time_sec:.3f}">',
     ]
@@ -28,11 +28,15 @@ def render_junit_report(result: EvaluationResult) -> str:
         ("AG-001", "ToolSchemaAdherence"),
         ("AG-002", "RunawayLoopAndStateThrashing"),
         ("AG-003", "SecurityAndVulnerabilityGuard"),
+        ("AG-004", "SSRFAndCloudMetadataGuard"),
+        ("AG-005", "TokenBudgetAndContextBloatGuard"),
     ]
 
     for rule_id, rule_name in standard_rules:
-        rule_findings: List[Finding] = findings_by_rule.get(rule_id, [])
-        lines.append(f'  <testcase classname="AgentGuard" name="{rule_name}" time="0.001">')
+        rule_findings: list[Finding] = findings_by_rule.get(rule_id, [])
+        lines.append(
+            f'  <testcase classname="AgentGuard" name="{rule_name}" time="0.001">'
+        )
         if rule_findings:
             for rf in rule_findings:
                 msg = html.escape(rf.message)

@@ -1,6 +1,7 @@
 """Tests for AgentGuard CLI commands."""
 
 from click.testing import CliRunner
+
 from agentguard.cli import cli
 
 
@@ -61,6 +62,30 @@ def test_cli_evaluate_failure_and_junit_output(tmp_path):
     assert result.exit_code == 1
     assert junit_path.exists()
     assert "<testsuite" in junit_path.read_text(encoding="utf-8")
+
+
+def test_cli_evaluate_html_output(tmp_path):
+    trace_path = tmp_path / "trace.json"
+    html_path = tmp_path / "report.html"
+    trace_path.write_text(
+        """{
+        "session_id": "test-html-cli",
+        "agent_name": "agent",
+        "tool_calls": [
+            {"step_id": 1, "tool_name": "read", "arguments": {"file": "doc.txt"}}
+        ]
+    }""",
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["evaluate", str(trace_path), "--format", "html", "-o", str(html_path)],
+    )
+    assert result.exit_code == 0
+    assert html_path.exists()
+    assert "<!DOCTYPE html>" in html_path.read_text(encoding="utf-8")
 
 
 def test_cli_fuzz(tmp_path):

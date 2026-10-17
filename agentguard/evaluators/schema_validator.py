@@ -1,7 +1,9 @@
 """Schema adherence and hallucinated tool validator."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 import jsonschema
+
 from agentguard.evaluators.base import BaseEvaluator
 from agentguard.models import AgentTrace, Finding, Severity
 
@@ -12,19 +14,19 @@ class SchemaValidator(BaseEvaluator):
     rule_id = "AG-001"
     rule_name = "Tool Schema Adherence"
 
-    def __init__(self, tool_schemas: Optional[Dict[str, Dict[str, Any]]] = None):
+    def __init__(self, tool_schemas: dict[str, dict[str, Any]] | None = None):
         """
         Args:
             tool_schemas: Dictionary mapping tool names to their JSON Schema definitions.
         """
         self.tool_schemas = tool_schemas or {}
 
-    def register_schema(self, tool_name: str, schema: Dict[str, Any]) -> None:
+    def register_schema(self, tool_name: str, schema: dict[str, Any]) -> None:
         """Register a JSON schema definition for a tool."""
         self.tool_schemas[tool_name] = schema
 
-    def evaluate(self, trace: AgentTrace) -> List[Finding]:
-        findings: List[Finding] = []
+    def evaluate(self, trace: AgentTrace) -> list[Finding]:
+        findings: list[Finding] = []
 
         if not self.tool_schemas:
             # If no schemas are configured, skip strict schema checks
@@ -56,7 +58,9 @@ class SchemaValidator(BaseEvaluator):
                     Finding(
                         rule_id="AG-001-B",
                         rule_name=f"{self.rule_name}: Schema Drift",
-                        severity=Severity.HIGH if err.validator == "required" else Severity.MEDIUM,
+                        severity=Severity.HIGH
+                        if err.validator == "required"
+                        else Severity.MEDIUM,
                         message=f"Tool '{call.tool_name}' argument error: {err.message}",
                         step_id=call.step_id,
                         tool_name=call.tool_name,

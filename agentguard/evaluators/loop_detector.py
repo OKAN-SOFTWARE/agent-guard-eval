@@ -1,8 +1,8 @@
 """Runaway execution and cyclical loop detector for agent traces."""
 
-from collections import Counter
 import json
-from typing import List, Tuple
+from collections import Counter
+
 from agentguard.evaluators.base import BaseEvaluator
 from agentguard.models import AgentTrace, Finding, Severity
 
@@ -32,8 +32,8 @@ class LoopDetector(BaseEvaluator):
         self.cycle_threshold = cycle_threshold
         self.max_total_steps = max_total_steps
 
-    def evaluate(self, trace: AgentTrace) -> List[Finding]:
-        findings: List[Finding] = []
+    def evaluate(self, trace: AgentTrace) -> list[Finding]:
+        findings: list[Finding] = []
         calls = trace.tool_calls
 
         # 1. Total step threshold check
@@ -45,7 +45,10 @@ class LoopDetector(BaseEvaluator):
                     severity=Severity.HIGH,
                     message=f"Agent exceeded maximum step limit ({len(calls)} > {self.max_total_steps})",
                     step_id=calls[-1].step_id if calls else None,
-                    details={"total_steps": len(calls), "max_allowed": self.max_total_steps},
+                    details={
+                        "total_steps": len(calls),
+                        "max_allowed": self.max_total_steps,
+                    },
                 )
             )
 
@@ -53,7 +56,7 @@ class LoopDetector(BaseEvaluator):
             return findings
 
         # Canonical signature for each call: (tool_name, serialized_sorted_args)
-        signatures: List[str] = []
+        signatures: list[str] = []
         for c in calls:
             try:
                 serialized_args = json.dumps(c.arguments, sort_keys=True)
@@ -83,10 +86,12 @@ class LoopDetector(BaseEvaluator):
         n = len(tool_names)
         for k in range(2, min(self.max_cycle_length + 1, n // 2 + 1)):
             for i in range(n - k * self.cycle_threshold + 1):
-                pattern: Tuple[str, ...] = tuple(tool_names[i : i + k])
+                pattern: tuple[str, ...] = tuple(tool_names[i : i + k])
                 is_cycle = True
                 for repeat in range(1, self.cycle_threshold):
-                    next_chunk = tuple(tool_names[i + repeat * k : i + (repeat + 1) * k])
+                    next_chunk = tuple(
+                        tool_names[i + repeat * k : i + (repeat + 1) * k]
+                    )
                     if next_chunk != pattern:
                         is_cycle = False
                         break

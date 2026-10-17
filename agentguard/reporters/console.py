@@ -1,10 +1,10 @@
 """Console reporter with rich terminal styling."""
 
-from io import StringIO
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+
 from agentguard.models import EvaluationResult, Severity
 
 
@@ -13,7 +13,11 @@ def render_console_report(result: EvaluationResult, console: Console = None) -> 
     capture_console = Console(record=True, width=100) if console is None else console
 
     status_color = "green" if result.passed else "red"
-    status_text = "[bold green]PASSED[/bold green]" if result.passed else "[bold red]FAILED[/bold red]"
+    status_text = (
+        "[bold green]PASSED[/bold green]"
+        if result.passed
+        else "[bold red]FAILED[/bold red]"
+    )
 
     summary_panel = Panel(
         Text.from_markup(
@@ -28,7 +32,9 @@ def render_console_report(result: EvaluationResult, console: Console = None) -> 
     capture_console.print(summary_panel)
 
     if not result.findings:
-        capture_console.print("[green]✔ No security, schema, or execution loop anomalies detected.[/green]\n")
+        capture_console.print(
+            "[green]✔ No security, schema, or execution loop anomalies detected.[/green]\n"
+        )
         return capture_console.export_text() if console is None else ""
 
     table = Table(

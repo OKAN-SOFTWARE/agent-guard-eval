@@ -1,9 +1,11 @@
 """Tests for reporters (console, junit, sarif)."""
 
 import json
+
 from agentguard.engine import evaluate_trace
 from agentguard.models import AgentTrace, ToolCall
 from agentguard.reporters.console import render_console_report
+from agentguard.reporters.html import render_html_report
 from agentguard.reporters.junit import render_junit_report
 from agentguard.reporters.sarif import render_sarif_report
 
@@ -41,3 +43,11 @@ def test_console_and_junit_sarif_reporters():
     assert sarif_json["version"] == "2.1.0"
     assert len(sarif_json["runs"][0]["results"]) >= 1
     assert sarif_json["runs"][0]["results"][0]["level"] == "error"
+
+    # Test HTML Reporter
+    html_out = render_html_report(result, trace=trace)
+    assert "<!DOCTYPE html>" in html_out
+    assert "AgentGuard Evaluation Report" in html_out
+    assert "test-session-report" in html_out
+    assert "FAILED" in html_out
+    assert "bash_execute" in html_out

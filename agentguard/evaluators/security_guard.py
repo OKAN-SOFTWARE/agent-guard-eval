@@ -1,7 +1,9 @@
 """Security evaluator for detecting dangerous payloads, injection, and privilege escalation."""
 
 import re
-from typing import Any, Dict, List, Pattern
+from re import Pattern
+from typing import Any
+
 from agentguard.evaluators.base import BaseEvaluator
 from agentguard.models import AgentTrace, Finding, Severity
 
@@ -33,8 +35,8 @@ class SecurityGuard(BaseEvaluator):
         re.IGNORECASE,
     )
 
-    def evaluate(self, trace: AgentTrace) -> List[Finding]:
-        findings: List[Finding] = []
+    def evaluate(self, trace: AgentTrace) -> list[Finding]:
+        findings: list[Finding] = []
 
         for call in trace.tool_calls:
             self._scan_arguments(call.arguments, call.step_id, call.tool_name, findings)
@@ -46,10 +48,10 @@ class SecurityGuard(BaseEvaluator):
         obj: Any,
         step_id: int,
         tool_name: str,
-        findings: List[Finding],
+        findings: list[Finding],
     ) -> None:
         if isinstance(obj, dict):
-            for k, v in obj.items():
+            for v in obj.values():
                 self._scan_arguments(v, step_id, tool_name, findings)
         elif isinstance(obj, list):
             for item in obj:
@@ -62,7 +64,7 @@ class SecurityGuard(BaseEvaluator):
         value: str,
         step_id: int,
         tool_name: str,
-        findings: List[Finding],
+        findings: list[Finding],
     ) -> None:
         # 1. Path traversal check
         if self.TRAVERSAL_PATTERN.search(value):
@@ -102,7 +104,11 @@ class SecurityGuard(BaseEvaluator):
                     message=f"Detected sensitive API key or private key pattern passed into tool '{tool_name}'",
                     step_id=step_id,
                     tool_name=tool_name,
-                    details={"redacted_token": value[:10] + "..." if len(value) > 10 else "***"},
+                    details={
+                        "redacted_token": value[:10] + "..."
+                        if len(value) > 10
+                        else "***"
+                    },
                 )
             )
 

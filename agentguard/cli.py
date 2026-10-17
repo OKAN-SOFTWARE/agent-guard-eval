@@ -3,6 +3,7 @@
 import json
 import sys
 from pathlib import Path
+
 import click
 from rich.console import Console
 
@@ -11,23 +12,25 @@ from agentguard.evaluators.schema_validator import SchemaValidator
 from agentguard.models import AgentTrace, Severity
 from agentguard.redteam.fuzzer import AgentRedTeamFuzzer
 from agentguard.reporters.console import render_console_report
+from agentguard.reporters.html import render_html_report
 from agentguard.reporters.junit import render_junit_report
 from agentguard.reporters.sarif import render_sarif_report
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="agentguard")
+@click.version_option(version="0.2.0", prog_name="agentguard")
 def cli():
     """AgentGuard: Deterministic Security & Reliability Evaluation Framework for AI Agents."""
-    pass
 
 
 @cli.command("evaluate")
-@click.argument("trace_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument(
+    "trace_file", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
 @click.option(
     "--format",
     "report_format",
-    type=click.Choice(["console", "junit", "sarif"], case_sensitive=False),
+    type=click.Choice(["console", "junit", "sarif", "html"], case_sensitive=False),
     default="console",
     help="Output report format (default: console).",
 )
@@ -52,13 +55,15 @@ def cli():
     default=None,
     help="Path to JSON file with tool JSON schemas.",
 )
-def evaluate_cmd(trace_file: Path, report_format: str, output: Path, fail_on: str, schema_file: Path):
+def evaluate_cmd(
+    trace_file: Path, report_format: str, output: Path, fail_on: str, schema_file: Path
+):
     """Evaluate an agent execution trace against security and reliability rules."""
     try:
         with open(trace_file, "r", encoding="utf-8") as f:
             data = json.load(f)
         trace = AgentTrace.model_validate(data)
-    except Exception as e:
+    except (OSError, json.JSONDecodeError, ValueError) as e:
         click.secho(f"Error parsing trace file '{trace_file}': {e}", fg="red", err=True)
         sys.exit(2)
 
@@ -72,8 +77,10 @@ def evaluate_cmd(trace_file: Path, report_format: str, output: Path, fail_on: st
             for ev in evaluators:
                 if isinstance(ev, SchemaValidator):
                     ev.tool_schemas = schemas
-        except Exception as e:
-            click.secho(f"Error reading schema file '{schema_file}': {e}", fg="red", err=True)
+        except (OSError, json.JSONDecodeError, ValueError) as e:
+            click.secho(
+                f"Error reading schema file '{schema_file}': {e}", fg="red", err=True
+            )
             sys.exit(2)
 
     result = evaluate_trace(trace, evaluators)
@@ -100,6 +107,13 @@ def evaluate_cmd(trace_file: Path, report_format: str, output: Path, fail_on: st
             click.echo(f"SARIF JSON written to {output}")
         else:
             click.echo(sarif_content)
+    elif report_format == "html":
+        html_content = render_html_report(result, trace=trace)
+        if output:
+            output.write_text(html_content, encoding="utf-8")
+            click.echo(f"Interactive HTML report written to {output}")
+        else:
+            click.echo(html_content)
 
     # Determine exit code based on --fail-on
     severity_order = {
@@ -117,7 +131,9 @@ def evaluate_cmd(trace_file: Path, report_format: str, output: Path, fail_on: st
 
 @cli.command("fuzz")
 @click.argument("prompt", type=str)
-@click.option("--tool", default="bash_execute", help="Target tool name hint for attacks.")
+@click.option(
+    "--tool", default="bash_execute", help="Target tool name hint for attacks."
+)
 @click.option(
     "--output",
     "-o",
@@ -131,12 +147,16 @@ def fuzz_cmd(prompt: str, tool: str, output: Path):
     test_cases = fuzzer.generate_adversarial_prompts(prompt, tool_hint=tool)
 
     console = Console()
-    console.print(f"[bold cyan]Generated {len(test_cases)} Adversarial Attack Test Cases[/bold cyan]\n")
+    console.print(
+        f"[bold cyan]Generated {len(test_cases)} Adversarial Attack Test Cases[/bold cyan]\n"
+    )
 
     for idx, tc in enumerate(test_cases, 1):
-        console.print(f"[bold yellow]#{idx} [{tc.attack_category}] {tc.attack_name}[/bold yellow]")
+        console.print(
+            f"[bold yellow]#{idx} [{tc.attack_category}] {tc.attack_name}[/bold yellow]"
+        )
         console.print(f"  [dim]{tc.description}[/dim]")
-        console.print(f"  [magenta]Payload:[/magenta] {repr(tc.payload[:80])}...\n")
+        console.print(f"  [magenta]Payload:[/magenta] {tc.payload[:80]!r}...\n")
 
     if output:
         output.write_text(

@@ -1,26 +1,30 @@
 """Evaluation engine orchestrator for AgentGuard."""
 
 import time
-from typing import List, Optional
+
 from agentguard.evaluators.base import BaseEvaluator
+from agentguard.evaluators.budget_guard import TokenAndCostBudgetGuard
 from agentguard.evaluators.loop_detector import LoopDetector
 from agentguard.evaluators.schema_validator import SchemaValidator
 from agentguard.evaluators.security_guard import SecurityGuard
+from agentguard.evaluators.ssrf_guard import SSRFAndExfiltrationGuard
 from agentguard.models import AgentTrace, EvaluationResult, Finding
 
 
-def get_default_evaluators() -> List[BaseEvaluator]:
+def get_default_evaluators() -> list[BaseEvaluator]:
     """Returns the standard production suite of deterministic trace evaluators."""
     return [
         SchemaValidator(),
         LoopDetector(),
         SecurityGuard(),
+        SSRFAndExfiltrationGuard(),
+        TokenAndCostBudgetGuard(),
     ]
 
 
 def evaluate_trace(
     trace: AgentTrace,
-    evaluators: Optional[List[BaseEvaluator]] = None,
+    evaluators: list[BaseEvaluator] | None = None,
 ) -> EvaluationResult:
     """
     Evaluates an agent execution trace against all registered evaluators.
@@ -36,7 +40,7 @@ def evaluate_trace(
         evaluators = get_default_evaluators()
 
     start_time = time.perf_counter()
-    all_findings: List[Finding] = []
+    all_findings: list[Finding] = []
 
     for evaluator in evaluators:
         findings = evaluator.evaluate(trace)
@@ -46,7 +50,9 @@ def evaluate_trace(
 
     total_checks = len(evaluators)
     # A check passes if no finding with its rule ID prefix was emitted
-    failed_rule_ids = {f.rule_id.split("-")[0] + "-" + f.rule_id.split("-")[1] for f in all_findings}
+    failed_rule_ids = {
+        f.rule_id.split("-")[0] + "-" + f.rule_id.split("-")[1] for f in all_findings
+    }
     failed_checks = len(failed_rule_ids)
     passed_checks = max(0, total_checks - failed_checks)
 

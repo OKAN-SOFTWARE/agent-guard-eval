@@ -8,11 +8,19 @@ from agentguard.models import AgentTrace, Severity, ToolCall
 
 def test_schema_validator_undeclared_tool():
     validator = SchemaValidator(
-        tool_schemas={"search": {"type": "object", "required": ["q"], "properties": {"q": {"type": "string"}}}}
+        tool_schemas={
+            "search": {
+                "type": "object",
+                "required": ["q"],
+                "properties": {"q": {"type": "string"}},
+            }
+        }
     )
     trace = AgentTrace(
         session_id="test-1",
-        tool_calls=[ToolCall(step_id=1, tool_name="bash_eval", arguments={"cmd": "whoami"})],
+        tool_calls=[
+            ToolCall(step_id=1, tool_name="bash_eval", arguments={"cmd": "whoami"})
+        ],
     )
     findings = validator.evaluate(trace)
     assert len(findings) == 1
@@ -22,11 +30,19 @@ def test_schema_validator_undeclared_tool():
 
 def test_schema_validator_argument_drift():
     validator = SchemaValidator(
-        tool_schemas={"search": {"type": "object", "required": ["q"], "properties": {"q": {"type": "string"}}}}
+        tool_schemas={
+            "search": {
+                "type": "object",
+                "required": ["q"],
+                "properties": {"q": {"type": "string"}},
+            }
+        }
     )
     trace = AgentTrace(
         session_id="test-2",
-        tool_calls=[ToolCall(step_id=1, tool_name="search", arguments={"invalid_arg": 123})],
+        tool_calls=[
+            ToolCall(step_id=1, tool_name="search", arguments={"invalid_arg": 123})
+        ],
     )
     findings = validator.evaluate(trace)
     assert len(findings) == 1
@@ -69,7 +85,9 @@ def test_security_guard_path_traversal():
     trace = AgentTrace(
         session_id="test-5",
         tool_calls=[
-            ToolCall(step_id=1, tool_name="read", arguments={"file": "../../../etc/passwd"}),
+            ToolCall(
+                step_id=1, tool_name="read", arguments={"file": "../../../etc/passwd"}
+            ),
         ],
     )
     findings = guard.evaluate(trace)
@@ -83,7 +101,11 @@ def test_security_guard_command_injection():
     trace = AgentTrace(
         session_id="test-6",
         tool_calls=[
-            ToolCall(step_id=1, tool_name="exec", arguments={"cmd": "rm -rf / --no-preserve-root"}),
+            ToolCall(
+                step_id=1,
+                tool_name="exec",
+                arguments={"cmd": "rm -rf / --no-preserve-root"},
+            ),
         ],
     )
     findings = guard.evaluate(trace)
@@ -112,8 +134,90 @@ def test_security_guard_sql_injection():
     trace = AgentTrace(
         session_id="test-8",
         tool_calls=[
-            ToolCall(step_id=1, tool_name="db", arguments={"query": "SELECT * FROM users WHERE 1=1 OR 2=2"}),
+            ToolCall(
+                step_id=1,
+                tool_name="db",
+                arguments={"query": "SELECT * FROM users WHERE 1=1 OR 2=2"},
+            ),
         ],
     )
     findings = guard.evaluate(trace)
     assert any(f.rule_id == "AG-003-D" for f in findings)
+
+
+def test_ssrf_guard_imds_probe():
+    from agentguard.evaluators.ssrf_guard import SSRFAndExfiltrationGuard
+
+    guard = SSRFAndExfiltrationGuard()
+    trace = AgentTrace(
+        session_id="test-ssrf-1",
+        tool_calls=[
+            ToolCall(
+                step_id=1,
+                tool_name="http_get",
+                arguments={
+                    "url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+                },
+            )
+        ],
+    )
+    findings = guard.evaluate(trace)
+    assert len(findings) == 1
+    assert findings[0].rule_id == "AG-004-B"
+    assert findings[0].severity == Severity.CRITICAL
+
+
+def test_ssrf_guard_private_ip_and_file():
+    from agentguard.evaluators.ssrf_guard import SSRFAndExfiltrationGuard
+
+    guard = SSRFAndExfiltrationGuard()
+    trace = AgentTrace(
+        session_id="test-ssrf-2",
+        tool_calls=[
+            ToolCall(
+                step_id=1,
+                tool_name="fetch",
+                arguments={"url": "http://192.168.1.100/admin"},
+            ),
+            ToolCall(
+                step_id=2, tool_name="fetch", arguments={"url": "file:///etc/shadow"}
+            ),
+        ],
+    )
+    findings = guard.evaluate(trace)
+    assert any(f.rule_id == "AG-004-C" for f in findings)
+    assert any(f.rule_id == "AG-004-A" for f in findings)
+
+
+def test_budget_guard_payload_bloat_and_token_ceiling():
+    from agentguard.evaluators.budget_guard import TokenAndCostBudgetGuard
+
+    guard = TokenAndCostBudgetGuard(
+        max_step_payload_bytes=1000, max_session_estimated_tokens=500
+    )
+    trace = AgentTrace(
+        session_id="test-budget-1",
+        tool_calls=[
+            ToolCall(step_id=1, tool_name="query", arguments={"data": "x" * 2000}),
+        ],
+    )
+    findings = guard.evaluate(trace)
+    assert any(f.rule_id == "AG-005-A" for f in findings)
+    assert any(f.rule_id == "AG-005-B" for f in findings)
+
+
+def test_budget_guard_cascading_failures():
+    from agentguard.evaluators.budget_guard import TokenAndCostBudgetGuard
+
+    guard = TokenAndCostBudgetGuard(max_failure_rate_threshold=0.5)
+    trace = AgentTrace(
+        session_id="test-budget-2",
+        tool_calls=[
+            ToolCall(step_id=1, tool_name="t1", error="Network error"),
+            ToolCall(step_id=2, tool_name="t2", error="Timeout"),
+            ToolCall(step_id=3, tool_name="t3", error="Bad gateway"),
+            ToolCall(step_id=4, tool_name="t4", output="ok"),
+        ],
+    )
+    findings = guard.evaluate(trace)
+    assert any(f.rule_id == "AG-005-C" for f in findings)

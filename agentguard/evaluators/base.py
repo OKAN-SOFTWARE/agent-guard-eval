@@ -1,7 +1,7 @@
 """Base evaluator interface."""
 
 from abc import ABC, abstractmethod
-from typing import List
+
 from agentguard.models import AgentTrace, Finding
 
 
@@ -12,15 +12,12 @@ class BaseEvaluator(ABC):
     @abstractmethod
     def rule_id(self) -> str:
         """Unique identifier for the evaluation rule."""
-        pass
 
     @property
     @abstractmethod
     def rule_name(self) -> str:
         """Human-readable name of the evaluation rule."""
-        pass
 
     @abstractmethod
-    def evaluate(self, trace: AgentTrace) -> List[Finding]:
+    def evaluate(self, trace: AgentTrace) -> list[Finding]:
         """Evaluates an agent trace and returns any security or quality findings."""
-        pass

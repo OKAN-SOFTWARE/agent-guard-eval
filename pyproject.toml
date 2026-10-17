@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-guard-eval"
-version = "0.1.0"
+version = "0.2.0"
 description = "Deterministic Agentic Security & Evaluation Framework for AI Agent Traces"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "Veer Jain", email = "veer.spam.jain@gmail.com" }
+    { name = "Veer Jain", email = "jainveer321@gmail.com" }
 ]
 keywords = [
     "ai-agents",
@@ -18,8 +18,10 @@ keywords = [
     "evaluation",
     "red-teaming",
     "llm-guardrails",
+    "ssrf-protection",
+    "token-budgeting",
     "langgraph",
-    "langchain",
+    "aws-bedrock",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -35,6 +37,8 @@ classifiers = [
 dependencies = [
     "pydantic>=2.0.0",
     "jsonschema>=4.18.0",
+    "rich>=13.0.0",
+    "click>=8.0.0",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +49,9 @@ dev = [
 
 [project.scripts]
 agentguard = "agentguard.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentguard"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
