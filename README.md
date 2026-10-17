@@ -92,6 +92,16 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
+### Running with Docker
+
+```bash
+# Build the hardened container image
+docker build -t agentguard:latest .
+
+# Run evaluation mounted to your local traces
+docker run --rm -v $(pwd):/workspace agentguard:latest evaluate /workspace/examples/trace_valid.json -s /workspace/examples/tool_schemas.json
+```
+
 ---
 
 ## 💻 CLI Usage

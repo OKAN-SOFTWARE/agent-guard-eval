@@ -62,3 +62,10 @@ jobs:
         with:
           sarif_file: findings.sarif
         continue-on-error: true
+
+      - name: Build & Smoke Test Container (Docker)
+        if: matrix.python-version == '3.12'
+        run: |
+          docker build -t agentguard:test .
+          docker run --rm agentguard:test --version
+          docker run --rm -v ${{ github.workspace }}:/workspace agentguard:test evaluate /workspace/examples/trace_valid.json -s /workspace/examples/tool_schemas.json
