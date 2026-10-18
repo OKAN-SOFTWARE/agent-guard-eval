@@ -15,6 +15,7 @@ from agentguard.reporters.console import render_console_report
 from agentguard.reporters.html import render_html_report
 from agentguard.reporters.junit import render_junit_report
 from agentguard.reporters.sarif import render_sarif_report
+from agentguard.sanitizer import AgentTraceSanitizer
 
 
 @click.group()
@@ -164,6 +165,43 @@ def fuzz_cmd(prompt: str, tool: str, output: Path):
             encoding="utf-8",
         )
         console.print(f"[green]Saved attack test suite to {output}[/green]")
+
+
+@cli.command("sanitize")
+@click.argument(
+    "trace_file", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    required=True,
+    help="Target file path to write the sanitized trace.",
+)
+@click.option(
+    "--max-string-len",
+    default=10000,
+    type=int,
+    help="Maximum byte length for strings before pruning.",
+)
+def sanitize_cmd(trace_file: Path, output: Path, max_string_len: int):
+    """Sanitize an agent trace by redacting secrets and pruning bloated payloads."""
+    try:
+        with open(trace_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        trace = AgentTrace.model_validate(data)
+    except (OSError, json.JSONDecodeError, ValueError) as e:
+        click.secho(f"Error parsing trace file '{trace_file}': {e}", fg="red", err=True)
+        sys.exit(2)
+
+    sanitizer = AgentTraceSanitizer(max_string_length=max_string_len)
+    clean_trace, count = sanitizer.sanitize(trace)
+
+    output.write_text(clean_trace.model_dump_json(indent=2), encoding="utf-8")
+
+    console = Console()
+    console.print(f"[bold green]✔ Sanitized trace written to {output}[/bold green]")
+    console.print(f"  [cyan]Total Redactions Applied:[/cyan] [bold]{count}[/bold]")
 
 
 def main():

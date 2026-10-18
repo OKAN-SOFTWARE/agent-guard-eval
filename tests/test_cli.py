@@ -98,3 +98,25 @@ def test_cli_fuzz(tmp_path):
     assert result.exit_code == 0
     assert out_path.exists()
     assert "System Override" in out_path.read_text(encoding="utf-8")
+
+
+def test_cli_sanitize(tmp_path):
+    trace_path = tmp_path / "raw.json"
+    clean_path = tmp_path / "sanitized.json"
+    trace_path.write_text(
+        """{
+        "session_id": "test-raw",
+        "user_prompt": "My key is AKIA1234567890ABCDEF",
+        "tool_calls": []
+    }""",
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["sanitize", str(trace_path), "-o", str(clean_path)],
+    )
+    assert result.exit_code == 0
+    assert clean_path.exists()
+    assert "[REDACTED:AWS_ACCESS_KEY]" in clean_path.read_text(encoding="utf-8")
