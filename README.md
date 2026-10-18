@@ -50,10 +50,11 @@ flowchart LR
         D --> G[AG-003: Security & Injection Guard]
         D --> H[AG-004: SSRF & Cloud Metadata Guard]
         D --> I[AG-005: Token Budget & Bloat Guard]
+        D --> O[AG-006: Latency & SLA Guard]
     end
 
     subgraph Reporters["3. Multi-Target Reporting"]
-        E & F & G & H & I --> J[Result Aggregator]
+        E & F & G & H & I & O --> J[Result Aggregator]
         J --> K[Terminal Rich UI]
         J --> L[JUnit XML for CI/CD]
         J --> M[SARIF v2.1.0 for GitHub Security]
@@ -66,12 +67,16 @@ flowchart LR
 ## ⚡ Key Features
 
 - **⚡ Sub-Millisecond Latency**: Purely deterministic Python evaluation without external network calls or flaky LLM judge dependencies.
+- **⏱️ Step & Session SLA Monitoring**: Detects sudden step latency spikes, cumulative session duration timeouts, and progressive latency degradation trends (`AG-006`).
 - **🔍 State Thrashing & Oscillatory Cycle Detection**: Detects cyclical tool patterns (e.g., `tool_A -> tool_B -> tool_A -> tool_B`) and step budget overruns.
 - **🛡️ Deep Security Scanning**: Recursive argument payload inspection against command injections, AWS/OpenAI credential leakage, path traversals, and SQL injection.
 - **☁️ Cloud Metadata & SSRF Defense**: Prevents autonomous agents from querying AWS IMDSv1/v2 credentials or probing internal private IPs (`10.0.0.0/8`, `192.168.0.0/16`).
+- **🔒 Automated Trace Sanitizer & Defanger**: Redacts AWS keys, OpenAI tokens, and GitHub credentials while pruning oversized payloads prior to trace storage or evaluation.
+- **🦜 LangChain & LangGraph Ecosystem Support**: Effortlessly extract execution traces directly via `AgentGuardCallbackHandler` or parse LangSmith run exports.
 - **💰 Token Budget & Payload Bloat Protection**: Flags oversized tool arguments/outputs and cascading failure loops.
 - **🎯 Red-Team Adversarial Fuzzer**: Generates adversarial test suites incorporating prompt injection, system delimiter overrides, token smuggling (Base64), and side-channel markdown leaks.
 - **📊 GitHub Security Integration**: Generates SARIF v2.1.0 reports so vulnerabilities display directly in GitHub's **Security > Code scanning** tab.
+- **⚙️ Reusable Composite GitHub Action**: Drop `uses: veerjain-1/agent-guard-eval@main` directly into CI pipelines to gate agent deployments.
 - **🖥️ Standalone HTML Dashboard**: Zero-dependency, modern dark-mode report with expandable step inspection.
 
 ---
@@ -129,7 +134,14 @@ agentguard evaluate examples/trace_vulnerable.json --format junit -o results.xml
 agentguard evaluate examples/trace_vulnerable.json --format sarif -o findings.sarif
 ```
 
-### 3. Generate Red-Team Adversarial Test Cases
+### 3. Sanitize Traces & Redact Secrets
+
+```bash
+# Redact sensitive AWS keys, OpenAI tokens, and truncate payload bloat
+agentguard sanitize examples/trace_vulnerable.json -o sanitized_trace.json
+```
+
+### 4. Generate Red-Team Adversarial Test Cases
 
 ```bash
 # Generate prompt injection & tool hijacking perturbations
@@ -138,13 +150,45 @@ agentguard fuzz "Query the accounts database and export summary" --tool bash_exe
 
 ---
 
+## ⚙️ GitHub Action Integration
+
+Drop the composite action directly into your deployment pipeline:
+
+```yaml
+name: Agent Security Gate
+on: [push, pull_request]
+
+jobs:
+  audit-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Evaluate Agent Execution Traces
+        uses: veerjain-1/agent-guard-eval@main
+        with:
+          trace-file: "examples/trace_vulnerable.json"
+          schema-file: "examples/tool_schemas.json"
+          fail-on: "HIGH"
+          format: "sarif"
+          output-file: "agentguard-findings.sarif"
+
+      - name: Upload Findings to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "agentguard-findings.sarif"
+```
+
+---
+
 ## 🐍 Python SDK
 
-You can integrate AgentGuard directly into your agent execution pipeline, unit tests, or evaluation suites:
+### 1. Direct Trace Evaluation
 
 ```python
 from agentguard import AgentTrace, ToolCall, evaluate_trace
 from agentguard.evaluators import (
+    LatencyAndSLAGuard,
     LoopDetector,
     SecurityGuard,
     SchemaValidator,
@@ -161,6 +205,7 @@ trace = AgentTrace(
             step_id=1,
             tool_name="sql_query",
             arguments={"query": "SELECT * FROM users WHERE username = 'admin' OR 1=1"},
+            latency_ms=125.0,
         )
     ],
 )
@@ -173,6 +218,28 @@ if not result.passed:
     print(f"Agent trace failed with {len(result.findings)} findings:")
     for finding in result.findings:
         print(f"[{finding.severity}] {finding.rule_id}: {finding.message}")
+```
+
+### 2. LangChain & LangGraph Callback Integration
+
+```python
+from agentguard.adapters import AgentGuardCallbackHandler
+
+# Attach directly to LangChain / LangGraph execution
+handler = AgentGuardCallbackHandler(agent_name="research-agent")
+
+# Pass as callback: agent_executor.invoke({"input": "..."}, config={"callbacks": [handler]})
+trace = handler.to_trace()
+result = evaluate_trace(trace)
+```
+
+### 3. Trace Sanitization & Defanging
+
+```python
+from agentguard.sanitizer import AgentTraceSanitizer
+
+sanitizer = AgentTraceSanitizer(mask_credentials=True, max_payload_bytes=4096)
+clean_trace = sanitizer.sanitize_trace(trace)
 ```
 
 ---
@@ -196,6 +263,9 @@ if not result.passed:
 | **`AG-005-A`** | Reliability | Massive Payload Bloat | `HIGH` | Single tool argument or output exceeded byte ceiling (>100KB), risking context overflow. |
 | **`AG-005-B`** | Cost | Token Budget Overrun | `HIGH` | Estimated cumulative trace tokens exceeded configured safety ceiling. |
 | **`AG-005-C`** | Reliability | Cascading Tool Failures | `MEDIUM` | Tool failure rate exceeded 50% across steps without error recovery. |
+| **`AG-006-A`** | Performance | Step Latency Spike | `MEDIUM` | Single tool execution duration exceeded configured step latency budget. |
+| **`AG-006-B`** | Reliability | Session SLA Breach | `HIGH` | Cumulative execution duration of trace session exceeded SLA timeout budget. |
+| **`AG-006-C`** | Performance | Latency Degradation Trend | `LOW` | Monotonic latency degradation detected across consecutive tool steps. |
 
 ---
 
