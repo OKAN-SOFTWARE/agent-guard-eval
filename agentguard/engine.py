@@ -4,6 +4,7 @@ import time
 
 from agentguard.evaluators.base import BaseEvaluator
 from agentguard.evaluators.budget_guard import TokenAndCostBudgetGuard
+from agentguard.evaluators.latency_guard import LatencyAndSLAGuard
 from agentguard.evaluators.loop_detector import LoopDetector
 from agentguard.evaluators.schema_validator import SchemaValidator
 from agentguard.evaluators.security_guard import SecurityGuard
@@ -19,6 +20,7 @@ def get_default_evaluators() -> list[BaseEvaluator]:
         SecurityGuard(),
         SSRFAndExfiltrationGuard(),
         TokenAndCostBudgetGuard(),
+        LatencyAndSLAGuard(),
     ]
 
 

@@ -93,6 +93,13 @@ def render_sarif_report(result: EvaluationResult) -> str:
                                     "text": "Token Budget & Context Bloat Guard"
                                 },
                             },
+                            {
+                                "id": "AG-006",
+                                "name": "LatencyAndSLAGuard",
+                                "shortDescription": {
+                                    "text": "Latency & SLA Degradation Guard"
+                                },
+                            },
                         ],
                     }
                 },
