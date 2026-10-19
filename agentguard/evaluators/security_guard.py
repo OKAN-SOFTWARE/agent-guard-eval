@@ -21,7 +21,7 @@ class SecurityGuard(BaseEvaluator):
     )
 
     COMMAND_INJECTION_PATTERN: Pattern = re.compile(
-        r"(rm\s+-rf\s+[/~]|chmod\s+777|curl\s+.*\|\s*(ba)?sh|wget\s+.*\|\s*(ba)?sh|mkfs\b|;\s*rm\b|>\s*/dev/sda)",
+        r"(rm\s+-rf\s+[/~]|chmod\s+777|curl\s+.*\|\s*(ba)?sh|wget\s+.*\|\s*(ba)?sh|\|\s*(ba)?sh\b|mkfs\b|;\s*rm\b|>\s*/dev/sda)",
         re.IGNORECASE,
     )
 

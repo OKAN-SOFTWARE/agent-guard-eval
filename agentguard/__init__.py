@@ -3,6 +3,7 @@
 from agentguard.engine import evaluate_trace, get_default_evaluators
 from agentguard.evaluators.base import BaseEvaluator
 from agentguard.evaluators.budget_guard import TokenAndCostBudgetGuard
+from agentguard.evaluators.latency_guard import LatencyAndSLAGuard
 from agentguard.evaluators.loop_detector import LoopDetector
 from agentguard.evaluators.schema_validator import SchemaValidator
 from agentguard.evaluators.security_guard import SecurityGuard
@@ -19,17 +20,28 @@ from agentguard.reporters.console import render_console_report
 from agentguard.reporters.html import render_html_report
 from agentguard.reporters.junit import render_junit_report
 from agentguard.reporters.sarif import render_sarif_report
+from agentguard.runtime import (
+    AgentGuardBlockedException,
+    AgentGuardRuntime,
+    InterceptDecision,
+    RuntimeMode,
+)
 
 __version__ = "0.2.0"
 
 __all__ = [
+    "AgentGuardBlockedException",
+    "AgentGuardRuntime",
     "AgentRedTeamFuzzer",
     "AgentTrace",
     "BaseEvaluator",
     "EvaluationResult",
     "Finding",
+    "InterceptDecision",
+    "LatencyAndSLAGuard",
     "LoopDetector",
     "RedTeamTestCase",
+    "RuntimeMode",
     "SSRFAndExfiltrationGuard",
     "SchemaValidator",
     "SecurityGuard",
