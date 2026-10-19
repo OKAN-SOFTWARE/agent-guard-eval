@@ -9,6 +9,7 @@ from agentguard.evaluators.loop_detector import LoopDetector
 from agentguard.evaluators.schema_validator import SchemaValidator
 from agentguard.evaluators.security_guard import SecurityGuard
 from agentguard.evaluators.ssrf_guard import SSRFAndExfiltrationGuard
+from agentguard.evaluators.taint_guard import TaintFlowGuard
 from agentguard.models import AgentTrace, EvaluationResult, Finding
 
 
@@ -21,6 +22,7 @@ def get_default_evaluators() -> list[BaseEvaluator]:
         SSRFAndExfiltrationGuard(),
         TokenAndCostBudgetGuard(),
         LatencyAndSLAGuard(),
+        TaintFlowGuard(),
     ]
 
 

@@ -100,6 +100,13 @@ def render_sarif_report(result: EvaluationResult) -> str:
                                     "text": "Latency & SLA Degradation Guard"
                                 },
                             },
+                            {
+                                "id": "AG-007",
+                                "name": "TaintFlowAndIndirectInjectionGuard",
+                                "shortDescription": {
+                                    "text": "Indirect Prompt Injection & Taint-Flow Guard"
+                                },
+                            },
                         ],
                     }
                 },

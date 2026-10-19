@@ -31,6 +31,7 @@ def render_junit_report(result: EvaluationResult) -> str:
         ("AG-004", "SSRFAndCloudMetadataGuard"),
         ("AG-005", "TokenBudgetAndContextBloatGuard"),
         ("AG-006", "LatencyAndSLAGuard"),
+        ("AG-007", "TaintFlowAndIndirectInjectionGuard"),
     ]
 
     for rule_id, rule_name in standard_rules:

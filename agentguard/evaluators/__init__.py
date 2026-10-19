@@ -7,6 +7,7 @@ from agentguard.evaluators.loop_detector import LoopDetector
 from agentguard.evaluators.schema_validator import SchemaValidator
 from agentguard.evaluators.security_guard import SecurityGuard
 from agentguard.evaluators.ssrf_guard import SSRFAndExfiltrationGuard
+from agentguard.evaluators.taint_guard import TaintFlowGuard
 
 __all__ = [
     "BaseEvaluator",
@@ -15,5 +16,6 @@ __all__ = [
     "SSRFAndExfiltrationGuard",
     "SchemaValidator",
     "SecurityGuard",
+    "TaintFlowGuard",
     "TokenAndCostBudgetGuard",
 ]
