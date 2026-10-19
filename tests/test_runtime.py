@@ -77,16 +77,20 @@ def test_runtime_decorator_sync():
     assert trace.tool_calls[0].output == "Executed: ls -la"
 
 
-@pytest.mark.asyncio
-async def test_runtime_decorator_async():
+def test_runtime_decorator_async():
+    import asyncio
+
     runtime = AgentGuardRuntime(mode=RuntimeMode.BLOCK)
 
     @runtime.protect_async(tool_name="async_fetch")
     async def fetch_url(url: str) -> str:
         return f"Content of {url}"
 
-    res = await fetch_url("https://api.github.com/repos")
-    assert res == "Content of https://api.github.com/repos"
+    async def runner():
+        res = await fetch_url("https://api.github.com/repos")
+        assert res == "Content of https://api.github.com/repos"
 
-    with pytest.raises(AgentGuardBlockedException):
-        await fetch_url("file:///etc/passwd")
+        with pytest.raises(AgentGuardBlockedException):
+            await fetch_url("file:///etc/passwd")
+
+    asyncio.run(runner())
