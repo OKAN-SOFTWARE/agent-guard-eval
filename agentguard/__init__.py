@@ -1,5 +1,11 @@
 """AgentGuard: Deterministic Security & Reliability Evaluation Framework for AI Agents."""
 
+from agentguard.diff import (
+    DiffSummary,
+    TraceDiffEngine,
+    render_diff_console,
+    render_diff_markdown,
+)
 from agentguard.engine import evaluate_trace, get_default_evaluators
 from agentguard.evaluators.base import BaseEvaluator
 from agentguard.evaluators.budget_guard import TokenAndCostBudgetGuard
@@ -36,6 +42,7 @@ __all__ = [
     "AgentRedTeamFuzzer",
     "AgentTrace",
     "BaseEvaluator",
+    "DiffSummary",
     "EvaluationResult",
     "Finding",
     "InterceptDecision",
@@ -50,9 +57,12 @@ __all__ = [
     "TaintFlowGuard",
     "TokenAndCostBudgetGuard",
     "ToolCall",
+    "TraceDiffEngine",
     "evaluate_trace",
     "get_default_evaluators",
     "render_console_report",
+    "render_diff_console",
+    "render_diff_markdown",
     "render_html_report",
     "render_junit_report",
     "render_sarif_report",

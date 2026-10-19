@@ -7,6 +7,11 @@ from pathlib import Path
 import click
 from rich.console import Console
 
+from agentguard.diff import (
+    TraceDiffEngine,
+    render_diff_console,
+    render_diff_markdown,
+)
 from agentguard.engine import evaluate_trace, get_default_evaluators
 from agentguard.evaluators.schema_validator import SchemaValidator
 from agentguard.models import AgentTrace, Severity
@@ -202,6 +207,72 @@ def sanitize_cmd(trace_file: Path, output: Path, max_string_len: int):
     console = Console()
     console.print(f"[bold green]✔ Sanitized trace written to {output}[/bold green]")
     console.print(f"  [cyan]Total Redactions Applied:[/cyan] [bold]{count}[/bold]")
+
+
+@cli.command("diff")
+@click.argument(
+    "baseline_file", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.argument(
+    "candidate_file", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.option(
+    "--format",
+    "report_format",
+    type=click.Choice(["console", "markdown"], case_sensitive=False),
+    default="console",
+    help="Output format (console or markdown).",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Optional file path to write the diff report.",
+)
+def diff_cmd(
+    baseline_file: Path, candidate_file: Path, report_format: str, output: Path | None
+):
+    """Compare baseline vs candidate traces for behavioral & security regressions."""
+    try:
+        with open(baseline_file, "r", encoding="utf-8") as f:
+            base_data = json.load(f)
+        baseline = AgentTrace.model_validate(base_data)
+    except (OSError, json.JSONDecodeError, ValueError) as e:
+        click.secho(
+            f"Error parsing baseline trace '{baseline_file}': {e}", fg="red", err=True
+        )
+        sys.exit(2)
+
+    try:
+        with open(candidate_file, "r", encoding="utf-8") as f:
+            cand_data = json.load(f)
+        candidate = AgentTrace.model_validate(cand_data)
+    except (OSError, json.JSONDecodeError, ValueError) as e:
+        click.secho(
+            f"Error parsing candidate trace '{candidate_file}': {e}", fg="red", err=True
+        )
+        sys.exit(2)
+
+    engine = TraceDiffEngine()
+    diff = engine.compare(baseline, candidate)
+
+    if report_format == "markdown":
+        md = render_diff_markdown(diff)
+        if output:
+            output.write_text(md, encoding="utf-8")
+            click.echo(f"Saved diff report to {output}")
+        else:
+            click.echo(md)
+    else:
+        render_diff_console(diff)
+        if output:
+            # Also save markdown to file if output is specified
+            output.write_text(render_diff_markdown(diff), encoding="utf-8")
+            click.echo(f"Saved markdown diff report to {output}")
+
+    if diff.verdict == "REGRESSED":
+        sys.exit(1)
 
 
 def main():
